@@ -1,0 +1,176 @@
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <script type="text/javascript">
+
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-26354413-1']);
+        _gaq.push(['_setDomainName', 'kickjs.org']);
+        _gaq.push(['_trackPageview']);
+
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
+    <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?3.16.0/cssnormalize/cssnormalize-min.css&3.16.0/cssfonts/cssfonts-min.css&3.16.0/cssgrids/cssgrids-min.css&3.16.0/cssbase/cssbase-min.css&3.16.0/cssbutton/cssbutton-min.css">
+    <!--<link rel="stylesheet" type="text/css" href="yui.css">-->
+    <script src="http://yui.yahooapis.com/3.16.0/build/yui/yui-min.js"></script>
+    <!--<script src="yui.js"></script>-->
+    <!--<link href='http://fonts.googleapis.com/css?family=Coustard:400,900' rel='stylesheet' type='text/css'>-->
+    <link href='style.css' rel='stylesheet' type='text/css'>
+    <title>Rendering With Distance Functions</title>
+</head>
+<body class="yui3-skin-sam">
+<script src="require.js"></script>
+<!--<script src="//cdn.jsdelivr.net/ace/1.1.3/min/ace.js" type="text/javascript" charset="utf-8"></script>-->
+<script src="http://cdn.jsdelivr.net/ace/1.1.3/min/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="http://cdn.jsdelivr.net/ace/1.1.3/min/mode-glsl.js" type="text/javascript" charset="utf-8"></script>
+<script src="live_editor.js" type="text/javascript" charset="utf-8"></script>
+<script src="navigator.js" type="text/javascript" charset="utf-8"></script>
+<div id="page">
+    <header>
+    </header>
+    <article class="content">
+        <div id="wrapper" class="clearfix">
+            <div id="singlecol">
+                <script>
+                    insertPageTitle();
+                </script>
+                <p>
+                    We here list a few 2D primitives to give you something to play with.
+                </p>
+                <p>
+                    The box primitive takes two parameters a point and the size of the box.
+                </p>
+
+                <script type="html-source/xxx" id="simple-dist-fn-example">
+precision highp float;
+uniform vec2 _viewport;
+
+float box(vec2 p, vec2 b){
+    vec2 d = abs(p) - b;
+    return min(max(d.x,d.y),0.0) +
+            length(max(d,0.0));
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    float dist = box(normalizedPoint, vec2(0.5,0.5));
+	vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "275px";
+                    editor.title = "Box distance function";
+                    editor.build();
+                </script>
+                <p>
+                    Triangle
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-2-example">
+precision highp float;
+uniform vec2 _viewport;
+
+float triangle( vec2 p, float h )
+{
+    vec2 q = abs(p);
+    return max(q.x*0.866025+p.y*0.5,-p.y)-h*0.5;
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    float dist = triangle(normalizedPoint, 1.0);
+    vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-2-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "275px";
+                    editor.title = "Triangle distance function";
+                    editor.build();
+                </script>
+                <p>
+                    Hexagon
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-3-example">
+precision highp float;
+uniform vec2 _viewport;
+
+float hexa(vec2 p, float h){
+    vec2 q = abs(p);
+    return (max(q.x+q.y*0.57735,q.y*1.1547)-h);
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    float dist = hexa(normalizedPoint, 1.0);
+    vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-3-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "260px";
+                    editor.title = "Hexagon distance function";
+                    editor.build();
+                </script>
+                <p>
+                    And the circle again (just to keep all primitives on the same page)
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-4-example">
+precision highp float;
+uniform vec2 _viewport;
+
+float circle(vec2 p, float radius){
+    return length(p) - radius;
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    float dist = circle(normalizedPoint, 1.0);
+    vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-4-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "240px";
+                    editor.title = "Circle distance function";
+                    editor.build();
+                </script>
+                <script>
+                    insertNavigator();
+                </script>
+            </div>
+    </article>
+</div>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript"
+        src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+</body>
+
+</html>

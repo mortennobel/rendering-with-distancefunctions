@@ -1,0 +1,250 @@
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <script type="text/javascript">
+
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-26354413-1']);
+        _gaq.push(['_setDomainName', 'kickjs.org']);
+        _gaq.push(['_trackPageview']);
+
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
+    <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?3.16.0/cssnormalize/cssnormalize-min.css&3.16.0/cssfonts/cssfonts-min.css&3.16.0/cssgrids/cssgrids-min.css&3.16.0/cssbase/cssbase-min.css&3.16.0/cssbutton/cssbutton-min.css">
+    <!--<link rel="stylesheet" type="text/css" href="yui.css">-->
+    <script src="http://yui.yahooapis.com/3.16.0/build/yui/yui-min.js"></script>
+    <!--<script src="yui.js"></script>-->
+    <!--<link href='http://fonts.googleapis.com/css?family=Coustard:400,900' rel='stylesheet' type='text/css'>-->
+    <link href='style.css' rel='stylesheet' type='text/css'>
+    <title>Rendering With Distance Functions</title>
+</head>
+<body class="yui3-skin-sam">
+<script src="require.js"></script>
+<!--<script src="//cdn.jsdelivr.net/ace/1.1.3/min/ace.js" type="text/javascript" charset="utf-8"></script>-->
+<script src="http://cdn.jsdelivr.net/ace/1.1.3/min/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="http://cdn.jsdelivr.net/ace/1.1.3/min/mode-glsl.js" type="text/javascript" charset="utf-8"></script>
+<script src="live_editor.js" type="text/javascript" charset="utf-8"></script>
+<script src="navigator.js" type="text/javascript" charset="utf-8"></script>
+<div id="page">
+    <header>
+    </header>
+    <article class="content">
+        <div id="wrapper" class="clearfix">
+            <div id="singlecol">
+                <script>
+                    insertPageTitle();
+                </script>
+                <p>
+                    The primitives we have so far has all been centered around the origen (0,0). We need to be
+                    able to transform these primitives using translation, rotation and scale.
+                </p>
+                <p>
+                    We will first take a look at translate. Simply speaking translating a vec2 is simply just adding
+                    another vec2. However if we want to combine multiple transformations it is useful to use matrix
+                    for the transformations, since they can easily be concatenated. To translate a vec2 we need to use a
+                    3x3 matrix and to transform our vec2 to a vec3 with 1 as the z value (a vec2 in homogeneous
+                    coordinates).
+                </p>
+                <p>
+                    In the example below we translate by (0.5,0.5). At first sight you might be surprised to see that
+                    the box moves in the down-left direction. The reasons for this is that we are actually not
+                    translating the box, but the coordinate system. In other words, the box is transformed by the
+                    inverse transformation, which means that the box moves by (-0.5,0.5);
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-example">
+precision highp float;
+uniform vec2 _viewport;
+
+mat3 translate(vec2 o){
+    return mat3(
+        1.0,0.0,0.0,
+        0.0,1.0,0.0,
+        o.x,o.y,1.0
+        );
+}
+
+float box(vec2 p, vec2 b){
+    vec2 d = abs(p) - b;
+    return min(max(d.x,d.y),0.0) +
+            length(max(d,0.0));
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    normalizedPoint = (translate(vec2(0.5,0.5))*vec3(normalizedPoint,1.0)).xy;
+    float dist = box(normalizedPoint, vec2(0.5,0.5));
+	vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "275px";
+                    editor.title = "Translate";
+                    editor.build();
+                </script>
+                <p>
+                    Rotation in 2D is much simpler than 3D rotation, since it is always around the same axis. The
+                    function rotate create a right handed rotatation, but since the we are rotating the coordinate
+                    system the shape will rotate clockwise as the angle (in radian) will increase.
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-2-example">
+precision highp float;
+uniform vec2 _viewport;
+
+mat3 rotate(float a)
+{
+    float s = sin(-a);
+    float c = cos(-a);
+
+    return mat3(c, - s, 0.0,
+                s,   c, 0.0,
+                0.0,  0.0,  1.0);
+}
+
+float triangle( vec2 p, float h )
+{
+    vec2 q = abs(p);
+    return max(q.x*0.866025+p.y*0.5,-p.y)-h*0.5;
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    normalizedPoint = (rotate(0.1)*vec3(normalizedPoint,1.0)).xy;
+
+    float dist = triangle(normalizedPoint, 1.0);
+    vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-2-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "275px";
+                    editor.title = "Rotate";
+                    editor.build();
+                </script>
+                <p>
+                    Scale
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-3-example">
+precision highp float;
+uniform vec2 _viewport;
+
+mat3 scale(vec2 s){
+    return mat3(
+        s.x,0.0,0.0,
+        0.0,s.y,0.0,
+        0.0,0.0,1.0
+        );
+}
+
+float hexa(vec2 p, float h){
+    vec2 q = abs(p);
+    return (max(q.x+q.y*0.57735,q.y*1.1547)-h);
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    normalizedPoint = (scale(vec2(0.7,2.0))*vec3(normalizedPoint,1.0)).xy;
+
+    float dist = hexa(normalizedPoint, 1.0);
+    vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-3-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "260px";
+                    editor.title = "Scale";
+                    editor.build();
+                </script>
+                <p>
+                    Concatenating transformations.
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-4-example">
+precision highp float;
+uniform vec2 _viewport;
+
+mat3 scale(vec2 s){
+    return mat3(
+        s.x,0.0,0.0,
+        0.0,s.y,0.0,
+        0.0,0.0,1.0
+        );
+}
+
+mat3 rotate(float a)
+{
+    float s = sin(-a);
+    float c = cos(-a);
+
+    return mat3(c, - s, 0.0,
+                s,   c, 0.0,
+                0.0,  0.0,  1.0);
+}
+
+mat3 translate(vec2 o){
+    return mat3(
+        1.0,0.0,0.0,
+        0.0,1.0,0.0,
+        o.x,o.y,1.0
+        );
+}
+
+float triangle( vec2 p, float h )
+{
+    vec2 q = abs(p);
+    return max(q.x*0.866025+p.y*0.5,-p.y)-h*0.5;
+}
+
+void main(void)
+{
+    vec2 normalizedPoint = (gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y);
+    mat3 trans = scale(vec2(1.0,4.0))*rotate(0.1)*translate(vec2(0.5,0.5));
+    normalizedPoint = (trans*vec3(normalizedPoint,1.0)).xy;
+
+    float dist = triangle(normalizedPoint, 1.0);
+    vec3 color = dist < 0.0? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-4-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "240px";
+                    editor.title = "Concatenating transformations";
+                    editor.build();
+                </script>
+                <script>
+                    insertNavigator();
+                </script>
+            </div>
+    </article>
+</div>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript"
+        src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+</body>
+
+</html>

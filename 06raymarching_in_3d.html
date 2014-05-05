@@ -1,0 +1,167 @@
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <script type="text/javascript">
+
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-26354413-1']);
+        _gaq.push(['_setDomainName', 'kickjs.org']);
+        _gaq.push(['_trackPageview']);
+
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
+    <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?3.16.0/cssnormalize/cssnormalize-min.css&3.16.0/cssfonts/cssfonts-min.css&3.16.0/cssgrids/cssgrids-min.css&3.16.0/cssbase/cssbase-min.css&3.16.0/cssbutton/cssbutton-min.css">
+    <!--<link rel="stylesheet" type="text/css" href="yui.css">-->
+    <script src="http://yui.yahooapis.com/3.16.0/build/yui/yui-min.js"></script>
+    <!--<script src="yui.js"></script>-->
+    <!--<link href='http://fonts.googleapis.com/css?family=Coustard:400,900' rel='stylesheet' type='text/css'>-->
+    <link href='style.css' rel='stylesheet' type='text/css'>
+    <title>Rendering With Distance Functions</title>
+</head>
+<body class="yui3-skin-sam">
+<script src="require.js"></script>
+<!--<script src="//cdn.jsdelivr.net/ace/1.1.3/min/ace.js" type="text/javascript" charset="utf-8"></script>-->
+<script src="http://cdn.jsdelivr.net/ace/1.1.3/min/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="http://cdn.jsdelivr.net/ace/1.1.3/min/mode-glsl.js" type="text/javascript" charset="utf-8"></script>
+<script src="live_editor.js" type="text/javascript" charset="utf-8"></script>
+<script src="navigator.js" type="text/javascript" charset="utf-8"></script>
+<div id="page">
+    <header>
+    </header>
+    <article class="content">
+        <div id="wrapper" class="clearfix">
+            <div id="singlecol">
+                <script>
+                    insertPageTitle();
+                </script>
+                <p>
+Most of the concepts introduced are also valid in 3D. One significant difference is that in 3D we are interested in
+finding the surface of objects rather than their interior.
+                </p>
+                <p>
+                    <img src="images/3d-raytracing.jpg" width="300" height="223" style="float: right; margin-left: 15px;"/>
+The first thing we do is defining the camera's view into the world. To keep it as simple as possible we set our camera in (0,0,0)
+and make it orthographic projection (meaning without perspective) from (-1,-1) to (1,1). Note that we don't use a near
+and a far plane as you might are familiar with from other types of 3D graphics. For each pixel we have a viewing
+direction, which for our simple example is (0,0,-1), since the camera is looking down the negative z-axis. We start with
+rendering a simple sphere.
+                </p>
+                <p>
+The render algorithm is simple. The every pixel find the starting point p in world space.
+                </p>
+                    <ul>
+                        <li>loop 100 iterations</li>
+
+                            <ul>
+                                <li>Find distance d from the point p to model</li>
+                                <li>Move p the distance d along the view direction</li>
+                            </ul>
+                        <li>If distance d is less that some threshold then assume we have hit the geometry</li>
+                    </ul>
+                <p>
+                    You might think it is slightly strange that I don't test for minimum threshold inside the loop.
+                    In some cases that might be a good idea, however GPUs execute a single instruction for multiple
+                    threads, which means that all threads in a thread group must have a distance less than the threshold
+                    before we can break out of the loop. If you are in doubt of what to do, I advice to to benchmark both
+                    possibilities and stick with the fastest or most simple option.
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-example">
+precision highp float;
+uniform vec2 _viewport;
+
+float sphere(vec3 p, float radius){
+    return length(p) - radius;
+}
+
+vec3 translate(vec3 p, vec3 offset){
+    return p+offset;
+}
+
+float model(vec3 p){
+    return sphere(translate(p,vec3(0.0,0.0,2.0)), 0.5);
+}
+
+void main(void)
+{
+    vec3 p = vec3((gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y),0.0);
+    vec3 viewdir = vec3(0.0,0.0,-1.0);
+    float d = 0.0;
+    for (int i=0;i<100;i++){
+        d = model(p);
+        p = p + d*viewdir;
+    }
+    vec3 color = d < 0.1 ? vec3(1.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "275px";
+                    editor.title = "Simple 3D raytracing";
+                    editor.build();
+                </script>
+                <p>
+                    Now that do look much more like a 2D circle than a 3D sphere. Before we move on, let's convince us
+                    of we are working with 3D by using the depth to visualize the scene.
+                </p>
+                <script type="html-source/xxx" id="simple-dist-fn-2-example">
+precision highp float;
+uniform vec2 _viewport;
+
+float sphere(vec3 p, float radius){
+    return length(p) - radius;
+}
+
+vec3 translate(vec3 p, vec3 offset){
+    return p+offset;
+}
+
+float model(vec3 p){
+    return sphere(translate(p,vec3(0.0,0.0,2.0)), 0.5);
+}
+
+void main(void)
+{
+    vec3 p = vec3((gl_FragCoord.xy-_viewport*0.5)/(0.5*_viewport.y),0.0);
+    vec3 viewdir = vec3(0.0,0.0,-1.0);
+    float d = 0.0;
+    for (int i=0;i<100;i++){
+        d = model(p);
+        p = p + d*viewdir;
+    }
+    vec3 color = d < 0.1 ? vec3(p.z+2.0) : vec3(0.0);
+	gl_FragColor = vec4(color,1.0);
+}
+                </script>
+                <script>
+                    var editor = new LiveEditor();
+                    editor.data = document.getElementById('simple-dist-fn-2-example').textContent;
+                    editor.mode = "ace/mode/html";
+                    editor.height = "275px";
+                    editor.title = "Simple 3D shading using depth";
+                    editor.build();
+                </script>
+
+                <script>
+                    insertNavigator();
+                </script>
+            </div>
+    </article>
+</div>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript"
+        src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+</body>
+
+</html>
